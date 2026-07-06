@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: n8n_postgres_vector
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: n8n_secure_password_2026  # Cambia esto por algo tuyo
+      POSTGRES_DB: n8n_database
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - n8n_net
+    restart: always
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n_app
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_database
+      - DB_POSTGRESDB_USER=n8n_user
+      - DB_POSTGRESDB_PASSWORD=n8n_secure_password_2026 # Debe coincidir con el de arriba
+      - N8N_ENCRYPTION_KEY=clave_secreta_para_encriptar_credenciales_n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n_net
+    restart: always
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  n8n_data:
+
+networks:
+  n8n_net:
