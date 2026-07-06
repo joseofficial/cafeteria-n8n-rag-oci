@@ -23,8 +23,8 @@ resource "oci_core_instance" "n8n_server" {
 
   # Asignamos los recursos gratuitos máximos
   shape_config {
-    ocpus         = 4
-    memory_in_gbs = 24
+    ocpus         = 2
+    memory_in_gbs = 12
   }
 
   # Lo conectamos a la calle con internet que creamos antes
