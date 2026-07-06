@@ -6,3 +6,7 @@
 
 # Ignorar archivos de entorno de Docker
 .env
+.pem
+
+# Ignorar llaves SSH generadas localmente
+n8n_key*
