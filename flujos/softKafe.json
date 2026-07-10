@@ -139,21 +139,6 @@
     },
     {
       "parameters": {
-        "url": "=https://api.telegram.org/file/bot8663837798:AAHlmp5XBls_scSwGw0HNucyqmxgYHGUvUk/{{ $json.result.file_path }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -544,
-        -928
-      ],
-      "id": "6fce4b06-a4f2-4a62-97e6-fdbf466d5e38",
-      "name": "procesar audio",
-      "disabled": true
-    },
-    {
-      "parameters": {
         "jsCode": "for (const item of $input.all()) {\n  if (item.binary && item.binary.data) {\n    item.binary.data.mimeType = 'audio/ogg';\n  }\n}\nreturn $input.all();"
       },
       "type": "n8n-nodes-base.code",
@@ -222,7 +207,7 @@
         "promptType": "define",
         "text": "={{ $json.chat_input }}",
         "options": {
-          "systemMessage": "=Usa esta herramienta para buscar información sobre el menú, precios, horarios, reservas, ubicación y enlaces a fotos de la cafetería SoftKaf\n\n\"REGLA DE FORMATO ESTRICTA: Para resaltar texto, debes usar EXCLUSIVAMENTE etiquetas HTML (por ejemplo: texto en negrita). NUNCA uses formato Markdown (prohibido usar asteriscos * o guiones bajos _ para el formato), ya que esto causa errores fatales en el sistema.\""
+          "systemMessage": "=Usa esta herramienta para buscar información sobre el menú, precios, horarios, reservas, ubicación y enlaces a fotos de la cafetería SoftKafe.\n\nREGLA DE FORMATO ESTRICTA: Tu plataforma de salida es Telegram. Para resaltar texto, usa EXCLUSIVAMENTE etiquetas HTML básicas (, , , ). ESTÁ TOTALMENTE PROHIBIDO usar etiquetas de listas HTML como , ,  o\n\n\n. Si necesitas hacer una lista de elementos, usa simplemente viñetas de texto (•) o guiones normales (-). NUNCA uses formato Markdown (prohibido usar asteriscos * o guiones bajos _ para el formato), ya que esto causa errores fatales en el sistema."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -404,21 +389,6 @@
     },
     {
       "parameters": {
-        "url": "=https://api.telegram.org/file/bot8663837798:AAHlmp5XBls_scSwGw0HNucyqmxgYHGUvUk/{{ $json.result.file_path }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        -544,
-        -704
-      ],
-      "id": "b41adf90-1245-4d8c-aa09-fcb99674ec95",
-      "name": "procesar imagen",
-      "disabled": true
-    },
-    {
-      "parameters": {
         "jsCode": "for (const item of $input.all()) {\n  if (item.binary && item.binary.data) {\n    item.binary.data.mimeType = 'image/jpeg';\n  }\n}\nreturn $input.all();"
       },
       "type": "n8n-nodes-base.code",
@@ -546,28 +516,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "DELETE FROM n8n_chat_histories;",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -544,
-        -480
-      ],
-      "id": "f52b8a85-5b38-4be1-84d0-ecb8a74b4c83",
-      "name": "Execute a SQL query",
-      "credentials": {
-        "postgres": {
-          "id": "3i3fSGlRt24T52Mq",
-          "name": "Postgres account"
-        }
-      },
-      "disabled": true
-    },
-    {
-      "parameters": {
         "descriptionType": "manual",
         "toolDescription": "Usa esta herramienta para agendar una reserva cuando el cliente te dé su nombre, fecha, hora y cantidad de personas.",
         "schema": {
@@ -584,7 +532,6 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', ``, 'number') }}",
             "cantidad_personas": "={{ Number($fromAI(\"cantidad\", \"Número entero de personas\")) }}",
             "nombre_cliente": "={{ $fromAI(\"nombre\", \"El nombre de la persona que reserva\") }}",
             "fecha_hora": "={{ $fromAI(\"fecha\", \"La fecha y hora en formato YYYY-MM-DD HH:MM:SS\") }}",
@@ -603,7 +550,7 @@
               "display": true,
               "type": "number",
               "canBeUsedToMatch": true,
-              "removed": false
+              "removed": true
             },
             {
               "id": "telegram_chat_id",
@@ -670,6 +617,182 @@
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM n8n_chat_histories;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -544,
+        -480
+      ],
+      "id": "f52b8a85-5b38-4be1-84d0-ecb8a74b4c83",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "3i3fSGlRt24T52Mq",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usa esta herramienta cuando el cliente te pida cancelar o eliminar una reserva. Pídele la fecha y hora de la reserva que desea cancelar si no la ha mencionado.",
+        "operation": "deleteTable",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "reservas",
+          "mode": "list",
+          "cachedResultName": "reservas"
+        },
+        "deleteCommand": "delete",
+        "where": {
+          "values": [
+            {
+              "column": "telegram_chat_id",
+              "value": "={{ $('normalizacion').item.json.message_chat_id_sender.toString() }}"
+            },
+            {
+              "column": "fecha_hora",
+              "value": "={{ $fromAI(\"fecha\", \"La fecha y hora de la reserva a cancelar en formato YYYY-MM-DD HH:MM:SS\") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1920,
+        224
+      ],
+      "id": "df1c643a-486c-484a-af43-3ddb66a58314",
+      "name": "elimina_agendamiento",
+      "credentials": {
+        "postgres": {
+          "id": "3i3fSGlRt24T52Mq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usa esta herramienta cuando el cliente te pida cancelar o eliminar una reserva. Pídele la fecha y hora de la reserva que desea cancelar si no la ha mencionado.",
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "reservas",
+          "mode": "list",
+          "cachedResultName": "reservas"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha_hora": "={{ $fromAI(\"fecha_original\", \"La fecha y hora de la reserva que van a modificar en formato YYYY-MM-DD HH:MM:SS\") }}",
+            "telegram_chat_id": "={{ $('normalizacion').item.json.message_chat_id_sender.toString() }}",
+            "cantidad_personas": "={{ Number($fromAI(\"nueva_cantidad\", \"El nuevo número de personas\")) }}",
+            "nombre_cliente": "={{ string($fromAI(\"nuevo_nombre\", \"El nuevo nombre de la persona\")) }}"
+          },
+          "matchingColumns": [
+            "telegram_chat_id",
+            "fecha_hora"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "telegram_chat_id",
+              "displayName": "telegram_chat_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre_cliente",
+              "displayName": "nombre_cliente",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_hora",
+              "displayName": "fecha_hora",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cantidad_personas",
+              "displayName": "cantidad_personas",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2048,
+        320
+      ],
+      "id": "ad465f9b-b1ca-4728-923a-fd8436954c73",
+      "name": "modifica_agendamiento",
+      "credentials": {
+        "postgres": {
+          "id": "3i3fSGlRt24T52Mq",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -719,11 +842,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "procesar audio": {
-      "main": [
-        []
       ]
     },
     "formato": {
@@ -825,11 +943,6 @@
         ]
       ]
     },
-    "procesar imagen": {
-      "main": [
-        []
-      ]
-    },
     "formato1": {
       "main": [
         [
@@ -906,6 +1019,28 @@
           }
         ]
       ]
+    },
+    "elimina_agendamiento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "modifica_agendamiento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -914,7 +1049,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "11367fac-6172-4b0a-8d65-ca0ed33b7486",
+  "versionId": "1f355de1-3bea-4e2f-b070-931cf604b203",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "43091d9d568f6fa10ab3911eb7609cb7d470854a799578d1ea03fb4233c19af7"
