@@ -207,7 +207,7 @@
         "promptType": "define",
         "text": "={{ $json.chat_input }}",
         "options": {
-          "systemMessage": "=Usa esta herramienta para buscar información sobre el menú, precios, horarios, reservas, ubicación y enlaces a fotos de la cafetería SoftKafe.\n\nREGLA DE FORMATO ESTRICTA: Tu plataforma de salida es Telegram. Para resaltar texto, usa EXCLUSIVAMENTE etiquetas HTML básicas (, , , ). ESTÁ TOTALMENTE PROHIBIDO usar etiquetas de listas HTML como , ,  o\n\n\n. Si necesitas hacer una lista de elementos, usa simplemente viñetas de texto (•) o guiones normales (-). NUNCA uses formato Markdown (prohibido usar asteriscos * o guiones bajos _ para el formato), ya que esto causa errores fatales en el sistema."
+          "systemMessage": "=Usa esta herramienta para buscar información sobre el menú, precios, horarios, reservas, ubicación y enlaces a fotos de la cafetería SoftKafe.\n\nREGLA DE FORMATO ESTRICTA: Tu plataforma de salida es Telegram. Para resaltar texto, usa EXCLUSIVAMENTE etiquetas HTML básicas (, , , ). ESTÁ TOTALMENTE PROHIBIDO usar etiquetas de listas HTML como , ,  o . Si necesitas hacer una lista de elementos, usa simplemente viñetas de texto (•) o guiones normales (-). NUNCA uses formato Markdown (prohibido usar asteriscos * o guiones bajos _ para el formato), ya que esto causa errores fatales en el sistema.\n\nSi te hacen algun pregunta que no tenga que ver con la cafetería SoftKafe debes parar y responder que solo tienes información sobre la cafetería.\n\nHerramientas:\nCuando un cliente te pida hacer una nueva reserva, tu tarea es registrarla en ambos sistemas del negocio. OBLIGATORIAMENTE debes ejecutar la herramienta registra_agendamiento (para guardar en la base de datos) y en el mismo turno ejecutar la herramienta registra_calendario (para agendar en Google Calendar). Usa los mismos datos de fecha, hora y nombre para ambas herramientas."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -221,28 +221,9 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemini-2.5-flash",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1.1,
-      "position": [
-        1248,
-        176
-      ],
-      "id": "150fdfc1-da9b-4ed4-91f2-4a69eb8e9842",
-      "name": "Google Gemini Chat Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "5nBFxidUVJmqsO45",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('normalizacion').item.json.message_chat_id_sender }}"
+        "sessionKey": "={{ $('normalizacion').item.json.message_chat_id_sender }}",
+        "contextWindowLength": 10
       },
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.4,
@@ -620,55 +601,10 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "DELETE FROM n8n_chat_histories;",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -544,
-        -480
-      ],
-      "id": "f52b8a85-5b38-4be1-84d0-ecb8a74b4c83",
-      "name": "Execute a SQL query",
-      "credentials": {
-        "postgres": {
-          "id": "3i3fSGlRt24T52Mq",
-          "name": "Postgres account"
-        }
-      },
-      "disabled": true
-    },
-    {
-      "parameters": {
         "descriptionType": "manual",
         "toolDescription": "Usa esta herramienta cuando el cliente te pida cancelar o eliminar una reserva. Pídele la fecha y hora de la reserva que desea cancelar si no la ha mencionado.",
-        "operation": "deleteTable",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "value": "reservas",
-          "mode": "list",
-          "cachedResultName": "reservas"
-        },
-        "deleteCommand": "delete",
-        "where": {
-          "values": [
-            {
-              "column": "telegram_chat_id",
-              "value": "={{ $('normalizacion').item.json.message_chat_id_sender.toString() }}"
-            },
-            {
-              "column": "fecha_hora",
-              "value": "={{ $fromAI(\"fecha\", \"La fecha y hora de la reserva a cancelar en formato YYYY-MM-DD HH:MM:SS\") }}"
-            }
-          ]
-        },
+        "operation": "executeQuery",
+        "query": "DELETE FROM reservas \nWHERE telegram_chat_id = '{{ $('normalizacion').item.json.message_chat_id_sender.toString() }}'\n  AND DATE(fecha_hora) = '{{ $fromAI(\"fecha_cancelar\", \"La fecha exacta de la reserva que el cliente quiere cancelar, en formato YYYY-MM-DD\") }}'::DATE;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgresTool",
@@ -689,94 +625,9 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "Usa esta herramienta cuando el cliente te pida cancelar o eliminar una reserva. Pídele la fecha y hora de la reserva que desea cancelar si no la ha mencionado.",
-        "operation": "update",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "value": "reservas",
-          "mode": "list",
-          "cachedResultName": "reservas"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "fecha_hora": "={{ $fromAI(\"fecha_original\", \"La fecha y hora de la reserva que van a modificar en formato YYYY-MM-DD HH:MM:SS\") }}",
-            "telegram_chat_id": "={{ $('normalizacion').item.json.message_chat_id_sender.toString() }}",
-            "cantidad_personas": "={{ Number($fromAI(\"nueva_cantidad\", \"El nuevo número de personas\")) }}",
-            "nombre_cliente": "={{ string($fromAI(\"nuevo_nombre\", \"El nuevo nombre de la persona\")) }}"
-          },
-          "matchingColumns": [
-            "telegram_chat_id",
-            "fecha_hora"
-          ],
-          "schema": [
-            {
-              "id": "id",
-              "displayName": "id",
-              "required": false,
-              "defaultMatch": true,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "telegram_chat_id",
-              "displayName": "telegram_chat_id",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "nombre_cliente",
-              "displayName": "nombre_cliente",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "fecha_hora",
-              "displayName": "fecha_hora",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "type": "dateTime",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cantidad_personas",
-              "displayName": "cantidad_personas",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "email",
-              "displayName": "email",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
+        "toolDescription": "Usa esta herramienta cuando el cliente quiera modificar CUALQUIER dato de una reserva existente (cambiar de día, de hora o cantidad de personas). Debes deducir del historial los datos que el cliente no mencione para mantenerlos iguales.",
+        "operation": "executeQuery",
+        "query": "UPDATE reservas \nSET \n    fecha_hora = '{{ $fromAI(\"nueva_fecha_hora\", \"La nueva fecha y hora en formato YYYY-MM-DD HH:MM:SS. Si el cliente NO cambia la fecha/hora, envía la fecha y hora original.\") }}'::TIMESTAMP,\n    cantidad_personas = {{ Number($fromAI(\"nueva_cantidad\", \"La nueva cantidad total de personas. Si el cliente NO cambia la cantidad, envía la cantidad original.\") ) }}\nWHERE telegram_chat_id = '{{ $('normalizacion').item.json.message_chat_id_sender.toString() }}'\n  AND DATE(fecha_hora) = '{{ $fromAI(\"fecha_original\", \"La fecha de la reserva original que vamos a buscar, en formato YYYY-MM-DD\") }}'::DATE;",
         "options": {}
       },
       "type": "n8n-nodes-base.postgresTool",
@@ -791,6 +642,61 @@
         "postgres": {
           "id": "3i3fSGlRt24T52Mq",
           "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1248,
+        192
+      ],
+      "id": "c24fcc0d-9381-47d9-80ec-d0a10a5bfddf",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Kn1P1Cldq1MOosBw",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "jcmedinag001@gmail.com",
+          "mode": "list",
+          "cachedResultName": "jcmedinag001@gmail.com"
+        },
+        "start": "={{ $fromAI(\"fecha\", \"La fecha y hora en formato YYYY-MM-DD HH:MM:SS\") }}",
+        "end": "={{ $fromAI(\"fecha_fin\", \"La fecha y hora de finalización de la reserva. Calcula exactamente 1 hora después de la fecha de inicio. Formato YYYY-MM-DD HH:MM:SS\") }}",
+        "additionalFields": {
+          "summary": "=Reserva: {{ $fromAI(\"nombre\", \"...\") }} ({{ $fromAI(\"cantidad\", \"...\") }} personas)"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        368
+      ],
+      "id": "f6c3b5f9-54af-4a3f-afeb-0a8a8ff06de3",
+      "name": "registra_calendario",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "yXKdYpSshoU2WdgN",
+          "name": "Google Calendar account"
         }
       }
     }
@@ -872,17 +778,6 @@
           {
             "node": "AI Agent",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1041,15 +936,37 @@
           }
         ]
       ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "registra_calendario": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "1f355de1-3bea-4e2f-b070-931cf604b203",
+  "versionId": "f4b9b60e-00f0-4192-8544-39b05236073a",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "43091d9d568f6fa10ab3911eb7609cb7d470854a799578d1ea03fb4233c19af7"
