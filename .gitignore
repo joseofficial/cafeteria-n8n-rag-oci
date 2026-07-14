@@ -3,6 +3,7 @@
 *.tfstate
 *.tfstate.backup
 *.tfvars
+*.pem
 
 # Ignorar archivos de entorno de Docker
 .env
@@ -10,3 +11,4 @@
 
 # Ignorar llaves SSH generadas localmente
 n8n_key*
+nueva_llave_softkafe*
